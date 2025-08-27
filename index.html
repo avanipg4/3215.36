@@ -109,24 +109,101 @@
       updateGrid();
     }
 
-    (function(){
+    /*(function(){
       const scopes = ['username'];
-      function onIncompletePaymentFound(payment) {
-        console.log("Incomplete payment:", payment);
-        // You may want to handle or complete pending payments in backend
-      }
-      Pi.authenticate(scopes, onIncompletePaymentFound)
-        .then(auth => {
-          console.log("Authenticated:", auth);
-          // Example: Show the username (optional)
-          const userSpan = document.getElementById('playerName');
-          if (userSpan && auth.user && auth.user.username) {
-            userSpan.textContent = auth.user.username;
-          }
-        })
-        .catch(err => console.error("Pi authentication failed:", err));
-    })();
 
+       // Helper: detect if running inside Pi Browser
+      function isPiBrowser() {
+        return (typeof window.Pi !== "undefined");
+      }
+
+      // Case 1: Inside Pi Browser → use Pi SDK
+      if (isPiBrowser()) {
+        function onIncompletePaymentFound(payment) {
+          console.log("Incomplete payment:", payment);
+          // You may want to handle or complete pending payments in backend
+        }
+        Pi.authenticate(scopes, onIncompletePaymentFound)
+          .then(auth => {
+            console.log("Authenticated:", auth);
+            // Example: Show the username (optional)
+            const userSpan = document.getElementById('playerName');
+            if (userSpan && auth.user && auth.user.username) {
+              userSpan.textContent = auth.user.username;
+            }
+          })
+          .catch(err => console.error("Pi authentication failed:", err));
+      }// Case 2: Outside Pi Browser → fallback (Google Play or guest)
+      else {
+        // Fallback for web: guest or placeholder
+        const fallbackName = localStorage.getItem("guestName") || "Guest";
+        userSpan.textContent = fallbackName;
+        console.log("Not in Pi Browser — using fallback name:", fallbackName);
+
+        // Optional: Ask user to enter name
+        const name = prompt("Enter your name:", fallbackName);
+        if (name) {
+           localStorage.setItem("guestName", name);
+           userSpan.textContent = name;
+        }
+      }
+    })();
+*/
+
+    (function () {
+      const scopes = ['username'];
+
+      // Detect Pi Browser
+      function isPiBrowser() {
+        return (typeof window.Pi !== "undefined");
+      }
+
+      // Detect Android WebView bridge
+      function isAndroidWrapper() {
+        return (typeof window.AndroidBridge !== "undefined" &&
+                typeof window.AndroidBridge.requestPlayerName === "function");
+      }
+
+      // Hook for Android to set name
+      window.setPlayerName = function (name) {
+        const userSpan = document.getElementById("playerName");
+        if (userSpan) {
+          userSpan.textContent = name || "Guest";
+        }
+        console.log("Player name set by Android:", name);
+      };
+
+      // ---- PRIORITY ORDER ----
+      if (isPiBrowser()) {
+        console.log("Running inside Pi Browser...");
+        function onIncompletePaymentFound(payment) {
+          console.log("Incomplete payment:", payment);
+        }
+
+        Pi.authenticate(scopes, onIncompletePaymentFound)
+          .then(auth => {
+            console.log("Authenticated:", auth);
+            const userSpan = document.getElementById("playerName");
+            if (userSpan && auth.user && auth.user.username) {
+              userSpan.textContent = auth.user.username;
+            }
+          })
+          .catch(err => console.error("Pi authentication failed:", err));
+      }
+
+      else if (isAndroidWrapper()) {
+        console.log("Running inside Android wrapper...");
+        window.AndroidBridge.requestPlayerName();
+      }
+
+      else {
+        console.log("Plain web browser fallback...");
+        const userSpan = document.getElementById("playerName");
+        const fallbackName = localStorage.getItem("guestName") || "Guest";
+        if (userSpan) userSpan.textContent = fallbackName;
+      }
+    })();
+    
     function addRandomTile() {
       let empty = [];
       for (let r=0;r<size;r++) for (let c=0;c<size;c++) if (grid[r][c]===0) empty.push([r,c]);
