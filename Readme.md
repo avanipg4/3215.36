@@ -1,4 +1,4 @@
-# Pi 3215.36 Game 🎲
+# 3215.36 Pi Game 🎲
 
 A twist on the classic 2048 game — but instead of starting with **2**, you start with **3.14** (the value of π).  
 Built for fun and experimentation with the [Pi Network SDK](https://developers.minepi.com/) and playable in both desktop and mobile browsers.
