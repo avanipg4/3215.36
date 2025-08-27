@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pi 3215.36 Game</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background: #faf8ef; margin: 0; padding: 20px; }
+    h1 { font-size: 36px; margin: 10px; color: #776e65; }
+    #game-container { display: inline-block; margin-top: 20px;}
+    #grid { display: grid; grid-template-columns: repeat(6, 100px); grid-template-rows: repeat(6, 100px); gap: 10px; background: #bbada0; padding: 10px; border-radius: 10px; }
+    .tile { width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; font-size: 22px; font-weight: bold; border-radius: 5px; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); }
+    .tile-0 { background: #cdc1b4; }
+    .tile-1 { background: #eee4da; color: #776e65; }
+    .tile-2 { background: #ede0c8; color: #776e65; }
+    .tile-3 { background: #f2b179; color: #f9f6f2; }
+    .tile-4 { background: #f59563; color: #f9f6f2; }
+    .tile-5 { background: #f67c5f; color: #f9f6f2; }
+    .tile-6 { background: #f65e3b; color: #f9f6f2; }
+    .tile-7 { background: #edcf72; color: #f9f6f2; }
+    .tile-8 { background: #edcc61; color: #f9f6f2; }
+    .tile-9 { background: #edc850; color: #f9f6f2; }
+    .tile-10 { background: #edc53f; color: #f9f6f2; }
+    .tile-11 { background: #edc22e; color: #f9f6f2; }
+    /* Cards */
+    .card { display: inline-block; margin: 10px; padding: 15px 50px; background: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-size: 20px; font-weight: bold; }
+    #leaderboard { margin-top: 20px; max-width: 400px; margin-left: auto; margin-right: auto; }
+    .leaderboard-entry { background: #fff; margin: 8px 0; padding: 10px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center; font-size: 16px; }
+    .gold { background: #ffd70033; }
+    .silver { background: #c0c0c033; }
+    .bronze { background: #cd7f3233; }
+    .highlight { border: 2px solid #4caf50; box-shadow: 0 0 10px #4caf50; }
+    /* Popup modal */
+    #popup { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+    #popup-content { background: white; padding: 20px 40px; border-radius: 10px; font-size: 22px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    #popup button { margin-top: 15px; padding: 8px 20px; font-size: 16px; border: none; border-radius: 5px; background: #4caf50; color: white; cursor: pointer; }
+    /* Tabs */
+    .tabs { display: flex; justify-content: center; margin: 20px 0; }
+    .tab { width: 100%; padding: 10px 20px; cursor: pointer; font-weight: bold; color: #555; border-bottom: 3px solid transparent; margin: 0 10px; }
+    .tab.active { color: #000; border-bottom: 3px solid #007bff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    /* 📱 Mobile tweaks */
+    @media (max-width: 1000px) {
+      h1 { font-size: 5em; }
+      #game-container { width: 100%; }
+      #grid { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); gap: 1.5vw; background: #bbada0; padding: 2vw; border-radius: 10px; width: 96%; aspect-ratio: 1 / 1; /* keep square */ }
+      .tile { width: 100%; height: 100%; flex-shrink: 0; display: flex; justify-content: center; align-items: center; overflow: hidden; font-size: clamp(12px, 2.5vw, 25px); font-weight: bold; border-radius: 5px; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); word-wrap: break-word; }
+      .tab { font-size: 2.5em; padding: 3vw}
+      .card { font-size: 2em; width: 50%; padding: 3vw;}
+      #game > div > .card {width: 41% !important; float: left;}
+    }
+
+  </style>
+  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+  <script>Pi.init({ version: "2.0", sandbox: true });</script>
+</head>
+<body>
+  <div style="max-width: 1000px;margin: 0 auto;">
+  <h1>Pi 3215.36 Game</h1>
+
+  <div class="tabs">
+    <div class="tab active" onclick="openTab('game')">🎮 Game</div>
+    <div class="tab" onclick="openTab('leaderboard')">🏆 Leaderboard</div>
+  </div>
+
+  <div class="card"><span id="playerName">Guest</span></div>
+
+  <div id="game" class="tab-content active">
+    <div>
+      <div class="card">Score <br/><br/><span id="score">0</span></div>
+      <div class="card">Best <br/><br/><span id="best">0</span></div>
+    </div>
+    <div id="game-container">
+      <div id="grid"></div>
+    </div>
+  </div>
+
+  <div id="leaderboard" class="tab-content">
+    <h2>🏆 Leaderboard</h2>
+    <div id="leaderboard-list"></div>
+  </div>
+
+  <!-- Popup -->
+  <div id="popup">
+    <div id="popup-content">
+      🎉 High Score Achieved!
+      <br>
+      <button onclick="closePopup()">OK</button>
+    </div>
+  </div>
+
+  <script>
+    const size = 6;
+    let grid = [];
+    let score = 0;
+    let best = parseInt(localStorage.getItem("best")) || 0;
+    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+    let highScoreShown = false;
+
+    document.getElementById("best").innerText = best;
+
+    function init() {
+      grid = Array.from({ length: size }, () => Array(size).fill(0));
+      score = 0;
+      highScoreShown = false;
+      addRandomTile();
+      addRandomTile();
+      updateGrid();
+    }
+
+    (function(){
+      const scopes = ['username'];
+      function onIncompletePaymentFound(payment) {
+        console.log("Incomplete payment:", payment);
+        // You may want to handle or complete pending payments in backend
+      }
+      Pi.authenticate(scopes, onIncompletePaymentFound)
+        .then(auth => {
+          console.log("Authenticated:", auth);
+          // Example: Show the username (optional)
+          const userSpan = document.getElementById('playerName');
+          if (userSpan && auth.user && auth.user.username) {
+            userSpan.textContent = auth.user.username;
+          }
+        })
+        .catch(err => console.error("Pi authentication failed:", err));
+    })();
+
+    function addRandomTile() {
+      let empty = [];
+      for (let r=0;r<size;r++) for (let c=0;c<size;c++) if (grid[r][c]===0) empty.push([r,c]);
+      if (empty.length===0) return;
+      let [r,c] = empty[Math.floor(Math.random()*empty.length)];
+      grid[r][c] = 1; // exponent 1 = base tile 3.14
+    }
+
+    function updateGrid() {
+      const gridDiv = document.getElementById("grid");
+      gridDiv.innerHTML = "";
+      for (let r=0;r<size;r++) {
+        for (let c=0;c<size;c++) {
+          let val = grid[r][c];
+          let tile = document.createElement("div");
+          tile.className = "tile tile-" + val;
+          tile.innerText = val>0 ? (3.14*Math.pow(2,val-1)).toFixed(2) : "";
+          gridDiv.appendChild(tile);
+        }
+      }
+      document.getElementById("score").innerText = score;
+      document.getElementById("best").innerText = best;
+    }
+
+    function move(direction) {
+      let moved = false;
+      function slide(row) {
+        let arr = row.filter(v=>v!==0);
+        for (let i=0;i<arr.length-1;i++) {
+          if (arr[i]===arr[i+1]) {
+            arr[i]++;
+            score += Math.round(3.14*Math.pow(2,arr[i]-1));
+            arr.splice(i+1,1);
+          }
+        }
+        while (arr.length<size) arr.push(0);
+        return arr;
+      }
+      for (let i=0;i<size;i++) {
+        let row;
+        if (direction==="left") {
+          row = grid[i];
+          let newRow = slide(row);
+          if (row.toString()!==newRow.toString()) moved=true;
+          grid[i]=newRow;
+        } else if (direction==="right") {
+          row = grid[i].slice().reverse();
+          let newRow = slide(row).reverse();
+          if (grid[i].toString()!==newRow.toString()) moved=true;
+          grid[i]=newRow;
+        } else if (direction==="up") {
+          row = grid.map(r=>r[i]);
+          let newRow = slide(row);
+          for (let r=0;r<size;r++) if (grid[r][i]!==newRow[r]) moved=true;
+          for (let r=0;r<size;r++) grid[r][i]=newRow[r];
+        } else if (direction==="down") {
+          row = grid.map(r=>r[i]).reverse();
+          let newRow = slide(row).reverse();
+          for (let r=0;r<size;r++) if (grid[r][i]!==newRow[r]) moved=true;
+          for (let r=0;r<size;r++) grid[r][i]=newRow[r];
+        }
+      }
+      if (moved) {
+        addRandomTile();
+        updateGrid();
+        checkGameOver();
+        checkHighScore();
+      }
+    }
+
+    function checkHighScore() {
+      if (score>best) {
+        best = score;
+        localStorage.setItem("best", best);
+        if (!highScoreShown) {
+          showPopup();
+          updateLeaderboard();
+          highScoreShown = true;
+        }
+      }
+    }
+
+    function checkGameOver() {
+      for (let r=0;r<size;r++) for (let c=0;c<size;c++) if (grid[r][c]===0) return;
+      for (let r=0;r<size;r++) for (let c=0;c<size-1;c++) if (grid[r][c]===grid[r][c+1]) return;
+      for (let c=0;c<size;c++) for (let r=0;r<size-1;r++) if (grid[r][c]===grid[r+1][c]) return;
+      alert("Game Over! Final Score: "+score);
+      updateLeaderboard();
+      init();
+    }
+
+    function updateLeaderboard() {
+      let entry = { score: score, date: new Date().toLocaleString("en-US",{ day:"2-digit", month:"short", year:"numeric", hour:"numeric", minute:"2-digit", hour12:true }) };
+      leaderboard.push(entry);
+      leaderboard.sort((a,b)=> b.score-a.score || new Date(b.date)-new Date(a.date));
+      leaderboard = leaderboard.slice(0,10);
+      localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+      renderLeaderboard(entry);
+    }
+
+    function renderLeaderboard(newEntry) {
+      const list = document.getElementById("leaderboard-list");
+      list.innerHTML = "";
+      leaderboard.forEach((e,i)=>{
+        let div = document.createElement("div");
+        div.className="leaderboard-entry";
+        if (i===0) div.classList.add("gold");
+        if (i===1) div.classList.add("silver");
+        if (i===2) div.classList.add("bronze");
+        if (e===newEntry) div.classList.add("highlight");
+        div.innerHTML = `#${i+1} ${i===0?"🏆":""} ${e.score} <span>${e.date}</span>`;
+        list.appendChild(div);
+      });
+    }
+
+    function showPopup() { document.getElementById("popup").style.display="flex"; }
+    function closePopup() { document.getElementById("popup").style.display="none"; }
+
+    function openTab(tabId) {
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
+      document.querySelector(`.tab[onclick="openTab('${tabId}')"]`).classList.add("active");
+      document.getElementById(tabId).classList.add("active");
+    }
+
+    document.addEventListener("keydown", e=>{
+      if (e.key==="ArrowLeft") move("left");
+      if (e.key==="ArrowRight") move("right");
+      if (e.key==="ArrowUp") move("up");
+      if (e.key==="ArrowDown") move("down");
+    });
+
+    // Save leaderboard safely before leaving
+    window.addEventListener("beforeunload", () => {
+      updateLeaderboard();
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        updateLeaderboard();
+      }
+    });
+
+    // --- Swipe Controls for Mobile ---
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+
+    const minSwipeDistance = 30; // px threshold
+
+    document.addEventListener("touchstart", e => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    });
+
+    document.addEventListener("touchend", e => {
+      touchEndX = e.changedTouches[0].screenX;
+      touchEndY = e.changedTouches[0].screenY;
+
+      let dx = touchEndX - touchStartX;
+      let dy = touchEndY - touchStartY;
+
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > minSwipeDistance) {
+        if (dx > 0) move("right");
+        else move("left");
+      } else if (Math.abs(dy) > minSwipeDistance) {
+        if (dy > 0) move("down");
+        else move("up");
+      }
+    });
+
+
+    init();
+    renderLeaderboard({});
+  </script>
+  </div>
+</body>
+</html>
